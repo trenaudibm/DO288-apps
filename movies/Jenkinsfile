@@ -5,13 +5,11 @@ pipeline {
     }
     agent {
       node {
-        //TODO: Add label for the Maven jenkins agent
-         label 'maven'
+        label 'maven'
       }
     }
 
     environment {
-        //TODO: Customize these variables for your environment
         DEV_PROJECT = "trenaud-us-ibm-com-movies-dev"
         STAGE_PROJECT = "trenaud-us-ibm-com-movies-stage"
         APP_GIT_URL = "https://github.com/trenaudibm/DO288-apps"
@@ -82,26 +80,25 @@ pipeline {
                       }
                     }
                 }
-sh '''
-    oc new-app --as-deployment-config ${APP_NAME}:latest -n ${DEV_PROJECT}
-    oc expose svc/${APP_NAME} -n ${DEV_PROJECT}
-   '''
-
+                sh '''
+                        oc new-app  --as-deployment-config ${APP_NAME}:latest -n ${DEV_PROJECT}
+                        oc expose svc/${APP_NAME} -n ${DEV_PROJECT}
+                   '''
             }
         }
 
         stage('Wait for deployment in DEV env') {
-steps {
-  script {
-    openshift.withCluster() {
-      openshift.withProect( "${DEV_PROJECT}" ) {
-        openshift.selector("dc", "${APP_NAME}").related('pods').untilEach(1) {
-          return (it.object().status.phase == "Running")
-        }
-      }
-    }
-  }
-}
+            steps {
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject( "${DEV_PROJECT}" ) {
+                            openshift.selector("dc", "${APP_NAME}").related('pods').untilEach(1) {
+                                return (it.object().status.phase == "Running")
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         stage('Promote to Staging Env') {
@@ -111,9 +108,8 @@ steps {
                 }
                 script {
                     openshift.withCluster() {
-                    
-openshift.tag("${DEV_PROJECT}/${APP_NAME}:latest", "${STAGE_PROJECT}/${APP_NAME}:stage")
-}
+                    openshift.tag("${DEV_PROJECT}/${APP_NAME}:latest", "${STAGE_PROJECT}/${APP_NAME}:stage")
+                    }
                 }
             }
         }
@@ -128,12 +124,12 @@ openshift.tag("${DEV_PROJECT}/${APP_NAME}:latest", "${STAGE_PROJECT}/${APP_NAME}
                    '''
 
                 echo '### Creating a new app in Staging ###'
-sh '''
-        oc project ${STAGE_PROJECT}
-        oc new-app --as-deployment-config --name ${APP_NAME} -i ${APP_NAME}:stage
-        oc expose svc/${APP_NAME}
-   '''            
-}
+                sh '''
+                        oc project ${STAGE_PROJECT}
+                        oc new-app  --as-deployment-config --name ${APP_NAME} -i ${APP_NAME}:stage
+                        oc expose svc/${APP_NAME}
+                   '''
+            }
         }
 
         stage('Wait for deployment in Staging') {
